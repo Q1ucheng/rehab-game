@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   // 使用相对路径 './'，这样部署到任何 GitHub 仓库子路径都能正常访问资源
   // 这种方式适合不使用 BrowserRouter (History API) 的单页应用
-  base: './',
+  base: '/rehab-game/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
