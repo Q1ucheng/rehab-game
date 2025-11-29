@@ -1,58 +1,87 @@
-import * as firebaseAppModule from 'firebase/app';
-// Use namespace import and cast to handle potential CDN module differences
-const { initializeApp, getApps } = firebaseAppModule as any;
-
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import * as firebaseAuth from 'firebase/auth';
 import { 
   getFirestore, 
   doc, 
   setDoc, 
   getDoc, 
-  updateDoc 
+  updateDoc,
+  Firestore
 } from 'firebase/firestore';
 import { UserProfile } from '../types';
 
+// Destructure auth functions from namespace import to avoid "no exported member" errors
+const { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  updateProfile 
+} = firebaseAuth;
+
 // Configuration
+// 1. Try to read from Vite Environment Variables (Best Practice)
+// 2. Fallback to placeholder strings
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "your-app.firebaseapp.com",
-  projectId: "your-app",
-  storageBucket: "your-app.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY || "YOUR_API_KEY",
+  authDomain: (import.meta as any).env.VITE_FIREBASE_AUTH_DOMAIN || "your-app.firebaseapp.com",
+  projectId: (import.meta as any).env.VITE_FIREBASE_PROJECT_ID || "your-app",
+  storageBucket: (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET || "your-app.appspot.com",
+  messagingSenderId: (import.meta as any).env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
+  appId: (import.meta as any).env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef"
 };
 
-let app: any;
-let auth: any;
-let db: any;
+let app: FirebaseApp;
+let auth: firebaseAuth.Auth;
+let db: Firestore;
 let isMockMode = true;
 
 try {
-  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-    console.warn("Firebase config missing. Running in Mock Mode.");
+  // Check if we have a valid key (not the default placeholder)
+  const apiKey = firebaseConfig.apiKey;
+  const isValidConfig = apiKey && apiKey !== "YOUR_API_KEY" && !apiKey.includes("YOUR_API_KEY");
+
+  if (!isValidConfig) {
+    console.warn("Firebase config missing (using 'YOUR_API_KEY'). Running in Mock Mode (Local Storage Only).");
     isMockMode = true;
   } else {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     auth = getAuth(app);
     db = getFirestore(app);
     isMockMode = false;
+    console.log("Connected to real Firebase backend.");
   }
 } catch (e) {
   console.error("Firebase init error:", e);
+  console.warn("Falling back to Mock Mode due to init error.");
   isMockMode = true;
 }
 
-// MOCK DATA STORE for offline dev
+// ==========================================
+// MOCK DATA STORE (Local Storage Fallback)
+// ==========================================
 const mockDb: Record<string, UserProfile> = {};
 // Set of observers to notify when auth state changes in mock mode
 const mockAuthObservers = new Set<(user: UserProfile | null) => void>();
+
+// Load mock DB from local storage on init
+if (isMockMode) {
+    try {
+        const storedDb = localStorage.getItem('rehab_mock_db');
+        if (storedDb) {
+            Object.assign(mockDb, JSON.parse(storedDb));
+        }
+    } catch (e) {
+        console.error("Failed to load mock DB", e);
+    }
+}
+
+const saveMockDb = () => {
+    if (isMockMode) {
+        localStorage.setItem('rehab_mock_db', JSON.stringify(mockDb));
+    }
+}
 
 const notifyMockObservers = (user: UserProfile | null) => {
   mockAuthObservers.forEach(cb => {
@@ -67,42 +96,16 @@ const notifyMockObservers = (user: UserProfile | null) => {
 export const authService = {
   login: async (email: string, pass: string) => {
     if (isMockMode) {
-      // Mock login - create deterministic ID from email
+      // Mock login - deterministic ID
       const uid = 'mock-user-' + email.replace(/[^a-zA-Z0-9]/g, '');
       let profile = mockDb[uid];
       
-      // Try to recover from local storage
       if (!profile) {
-        const stored = localStorage.getItem('mock_auth');
-        if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              if (parsed.email === email) {
-                  profile = parsed;
-                  mockDb[uid] = profile;
-              }
-            } catch (e) {
-              console.error("Failed to parse mock auth storage", e);
-            }
-        }
-      }
-
-      // If still no profile, create a default one
-      if (!profile) {
-          profile = { 
-            uid, 
-            email, 
-            displayName: 'Mock User', 
-            description: 'Recovering nicely.', 
-            highScore: 0 
-          };
-          mockDb[uid] = profile;
+          throw new Error("User not found in Mock DB. Please register first.");
       }
 
       // Persist session
-      localStorage.setItem('mock_auth', JSON.stringify(profile));
-      
-      // Notify listeners
+      localStorage.setItem('mock_auth_session', JSON.stringify(profile));
       notifyMockObservers(profile);
 
       return { user: { uid, email, displayName: profile.displayName } };
@@ -113,26 +116,28 @@ export const authService = {
   register: async (email: string, pass: string, name: string) => {
     if (isMockMode) {
       const uid = 'mock-user-' + email.replace(/[^a-zA-Z0-9]/g, '');
-      const mockUser = { uid, email, displayName: name };
       
+      if (mockDb[uid]) {
+          throw new Error("User already exists in Mock DB.");
+      }
+
       const profile: UserProfile = {
-        uid: mockUser.uid,
-        email: mockUser.email,
-        displayName: mockUser.displayName,
-        description: 'Recovering nicely.',
+        uid,
+        email,
+        displayName: name,
+        description: 'New patient.',
         highScore: 0
       };
       
-      // Update DB
+      // Update DB and Save
       mockDb[uid] = profile;
+      saveMockDb();
       
       // Persist session
-      localStorage.setItem('mock_auth', JSON.stringify(profile));
-      
-      // Notify listeners
+      localStorage.setItem('mock_auth_session', JSON.stringify(profile));
       notifyMockObservers(profile);
 
-      return { user: mockUser };
+      return { user: { uid, email, displayName: name } };
     }
     
     // Real Firebase
@@ -153,7 +158,7 @@ export const authService = {
 
   logout: async () => {
     if (isMockMode) {
-      localStorage.removeItem('mock_auth');
+      localStorage.removeItem('mock_auth_session');
       notifyMockObservers(null);
       return;
     }
@@ -165,14 +170,7 @@ export const userService = {
   createUserProfile: async (profile: UserProfile) => {
     if (isMockMode) {
       mockDb[profile.uid] = profile;
-      // Sync to storage if current user
-      const stored = localStorage.getItem('mock_auth');
-      if (stored) {
-          const current = JSON.parse(stored);
-          if (current.uid === profile.uid) {
-              localStorage.setItem('mock_auth', JSON.stringify(profile));
-          }
-      }
+      saveMockDb();
       return;
     }
     await setDoc(doc(db, "users", profile.uid), profile);
@@ -195,13 +193,14 @@ export const userService = {
       if (mockDb[uid]) {
         if (newScore > mockDb[uid].highScore) mockDb[uid].highScore = newScore;
         if (description !== undefined) mockDb[uid].description = description;
+        saveMockDb();
         
-        // Sync to storage if current user
-        const stored = localStorage.getItem('mock_auth');
-        if (stored) {
-            const current = JSON.parse(stored);
+        // Update session if it's the current user
+        const storedSession = localStorage.getItem('mock_auth_session');
+        if (storedSession) {
+            const current = JSON.parse(storedSession);
             if (current.uid === uid) {
-                 localStorage.setItem('mock_auth', JSON.stringify(mockDb[uid]));
+                 localStorage.setItem('mock_auth_session', JSON.stringify(mockDb[uid]));
             }
         }
       }
@@ -212,17 +211,25 @@ export const userService = {
     const updates: any = {};
     if (description !== undefined) updates.description = description;
     
-    // Simple check-and-update for score (race conditions possible but ok for demo)
-    const current = await getDoc(userRef);
-    if (current.exists()) {
-        const data = current.data() as UserProfile;
-        if (newScore > data.highScore) {
-            updates.highScore = newScore;
+    // Simple check-and-update
+    // In a real app, use transactions for scores, but this is fine for now
+    try {
+        const current = await getDoc(userRef);
+        if (current.exists()) {
+            const data = current.data() as UserProfile;
+            if (newScore > data.highScore) {
+                updates.highScore = newScore;
+            }
+        } else {
+            // Document might be missing if registration failed partially
+             updates.highScore = newScore;
         }
-    }
-    
-    if (Object.keys(updates).length > 0) {
-        await updateDoc(userRef, updates);
+        
+        if (Object.keys(updates).length > 0) {
+            await updateDoc(userRef, updates);
+        }
+    } catch (e) {
+        console.error("Error updating stats", e);
     }
   }
 };
@@ -231,13 +238,16 @@ export const initializeAuthListener = (cb: (user: UserProfile | null) => void) =
   if (isMockMode) {
     mockAuthObservers.add(cb);
     
-    // Check initial state from local storage to restore session on refresh
-    const stored = localStorage.getItem('mock_auth');
+    // Check initial state from local storage session
+    const stored = localStorage.getItem('mock_auth_session');
     if (stored) {
         try {
             const user = JSON.parse(stored);
             if (user && user.uid) {
-              mockDb[user.uid] = user; // Hydrate memory DB
+              // Ensure DB has it (in case of clear cache partial)
+              if (!mockDb[user.uid]) {
+                  mockDb[user.uid] = user;
+              }
               cb(user);
             } else {
               cb(null);
@@ -257,8 +267,8 @@ export const initializeAuthListener = (cb: (user: UserProfile | null) => void) =
     if (firebaseUser) {
       try {
         let profile = await userService.getUserProfile(firebaseUser.uid);
-        // Fallback if profile doesn't exist yet (race condition with creation)
         if (!profile) {
+           // Create default profile if missing from Firestore
            profile = {
              uid: firebaseUser.uid,
              email: firebaseUser.email,
@@ -266,11 +276,20 @@ export const initializeAuthListener = (cb: (user: UserProfile | null) => void) =
              description: '',
              highScore: 0
            };
+           // Attempt to save it
+           await userService.createUserProfile(profile);
         }
         cb(profile);
       } catch (e) {
         console.error("Error fetching user profile", e);
-        cb(null);
+        // Still log them in even if profile fetch fails, but with basic data
+        cb({
+             uid: firebaseUser.uid,
+             email: firebaseUser.email,
+             displayName: firebaseUser.displayName,
+             description: '',
+             highScore: 0
+        });
       }
     } else {
       cb(null);
