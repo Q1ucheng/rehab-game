@@ -31,3 +31,20 @@ export interface Vec3 {
   y: number;
   z: number;
 }
+
+// Extend JSX.IntrinsicElements for React Three Fiber
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      mesh: any;
+      sphereGeometry: any;
+      meshStandardMaterial: any;
+      boxGeometry: any;
+      gridHelper: any;
+      ambientLight: any;
+      spotLight: any;
+      pointLight: any;
+      color: any;
+    }
+  }
+}
