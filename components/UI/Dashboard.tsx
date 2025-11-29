@@ -14,7 +14,6 @@ const Dashboard: React.FC = () => {
     if (user) {
       setDescription(user.description || '');
       // If we have a pending high score update from a previous game session
-      // (This is a simplification, ideally done at game over)
       if (score > user.highScore) {
          userService.updateStats(user.uid, score);
       }
@@ -97,7 +96,7 @@ const Dashboard: React.FC = () => {
               <textarea
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-slate-300 focus:ring-2 focus:ring-sky-500 outline-none min-h-[100px]"
                 value={description}
-                onChange={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.currentTarget.value)}
                 placeholder="Enter rehabilitation notes, current pain levels, or doctor's instructions..."
               />
             ) : (

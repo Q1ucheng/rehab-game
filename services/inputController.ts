@@ -86,10 +86,7 @@ export class InputController {
         };
       }
     } else {
-        // Fallback: Keyboard controls for debugging
-        // Arrow keys
-        // We can implement a simple key state tracker if needed, 
-        // but for now we return 0 or rely on Gamepad as primary per requirements.
+        // Fallback: Keyboard controls for debugging could go here
     }
 
     return this.currentState;

@@ -48,7 +48,7 @@ const AuthScreen: React.FC = () => {
                 className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-sky-500 outline-none transition"
                 placeholder="John Doe"
                 value={name}
-                onChange={(e) => setName((e.target as HTMLInputElement).value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.currentTarget.value)}
               />
             </div>
           )}
@@ -61,7 +61,7 @@ const AuthScreen: React.FC = () => {
               className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-sky-500 outline-none transition"
               placeholder="patient@example.com"
               value={email}
-              onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.currentTarget.value)}
             />
           </div>
 
@@ -73,7 +73,7 @@ const AuthScreen: React.FC = () => {
               className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-sky-500 outline-none transition"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.currentTarget.value)}
             />
           </div>
 

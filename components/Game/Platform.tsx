@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { useBox } from '@react-three/cannon';
 import { useFrame } from '@react-three/fiber';
 import { InputController } from '../../services/inputController';
@@ -27,14 +27,11 @@ export const Platform: React.FC = () => {
     // 1. Get Input
     const { pitch, roll, yaw } = inputController.getOrientation();
 
-    // 2. Calculate Quaternion from Euler angles
-    // Order: 'XYZ' or 'YXZ' depending on desired rotation behavior.
-    // Three.js Euler default is XYZ.
+    // 2. Calculate Euler angles
     const euler = new Euler(pitch, yaw, roll, 'XYZ');
-    const quaternion = new Quaternion().setFromEuler(euler);
-
+    
     // 3. Apply to Physics Body
-    // Using Euler angles (3 arguments) for rotation.set
+    // api.rotation.set takes (x, y, z)
     api.rotation.set(euler.x, euler.y, euler.z);
   });
 
