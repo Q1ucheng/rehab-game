@@ -231,7 +231,66 @@ export const userService = {
     } catch (e) {
         console.error("Error updating stats", e);
     }
+  },
+
+  //--------------------------------------------------------------------------------------------
+  // 获取排行榜数据
+  getLeaderboard: async (limit: number = 10): Promise<UserProfile[]> => {
+    if (isMockMode) {
+      // 模拟模式：从本地存储中获取并排序
+      const allUsers = Object.values(mockDb);
+      return allUsers
+        .sort((a, b) => b.highScore - a.highScore)
+        .slice(0, limit);
+    }
+    
+    // 真实Firebase模式：从Firestore获取数据
+    // 注意：在真实项目中，需要添加索引以支持排序查询
+    const { collection, query, orderBy, limit: firestoreLimit, getDocs } = await import('firebase/firestore');
+    
+    try {
+      const usersCollection = collection(db, "users");
+      const q = query(usersCollection, orderBy("highScore", "desc"), firestoreLimit(limit));
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+    } catch (e) {
+      console.error("Error fetching leaderboard", e);
+      return [];
+    }
+  },
+  
+  // 获取用户排名
+  getUserRank: async (uid: string): Promise<number> => {
+    if (isMockMode) {
+      // 模拟模式：计算排名
+      const allUsers = Object.values(mockDb);
+      allUsers.sort((a, b) => b.highScore - a.highScore);
+      const userIndex = allUsers.findIndex(user => user.uid === uid);
+      return userIndex !== -1 ? userIndex + 1 : 0; // +1 因为排名从1开始
+    }
+    
+    // 真实Firebase模式：查询得分高于当前用户的人数
+    const { collection, query, where, count, getCountFromServer } = await import('firebase/firestore');
+    
+    try {
+      // 先获取当前用户的分数
+      const userProfile = await userService.getUserProfile(uid);
+      if (!userProfile) return 0;
+      
+      // 查询比当前用户分数高的用户数量
+      const usersCollection = collection(db, "users");
+      const q = query(usersCollection, where("highScore", ">", userProfile.highScore));
+      const snapshot = await getCountFromServer(q);
+      
+      // 排名 = 比用户分数高的人数 + 1
+      return snapshot.data().count + 1;
+    } catch (e) {
+      console.error("Error getting user rank", e);
+      return 0;
+    }
   }
+  //--------------------------------------------------------------------------------------------
 };
 
 export const initializeAuthListener = (cb: (user: UserProfile | null) => void) => {
