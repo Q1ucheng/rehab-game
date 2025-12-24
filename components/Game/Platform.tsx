@@ -24,13 +24,13 @@ export const Platform: React.FC = () => {
   }));
 
   useFrame(() => {
-    // 1. Get Input
+    // Get Input
     const { pitch, roll, yaw } = inputController.getOrientation();
 
-    // 2. Calculate Euler angles
+    // Calculate Euler angles
     const euler = new Euler(pitch, yaw, roll, 'XYZ');
     
-    // 3. Apply to Physics Body
+    // Apply to Physics Body
     // api.rotation.set takes (x, y, z)
     api.rotation.set(euler.x, euler.y, euler.z);
   });
