@@ -3,7 +3,7 @@ name: Deploy Vite App to GitHub Pages
 on:
   push:
     branches:
-      - main   # 如果你用 master，这里改成 master
+      - main
 
 permissions:
   contents: read
@@ -32,7 +32,9 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: |
+          echo "VITE_BUILD_TIME=$(date -u)" >> $GITHUB_ENV
+          npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

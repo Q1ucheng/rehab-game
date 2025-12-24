@@ -31,7 +31,7 @@ const App: React.FC = () => {
       {currentScreen === AppScreen.DASHBOARD && <Dashboard />}
       {currentScreen === AppScreen.GAME && <GameScene />}
       <p style={{ position: 'fixed', bottom: 4, right: 8, fontSize: 12 }}>
-        Build: {import.meta.env.VITE_BUILD_TIME}
+        Build at: {import.meta.env.VITE_BUILD_TIME}
       </p>
     </div>
   );
