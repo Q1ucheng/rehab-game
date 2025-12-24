@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist --repo https://github.com/Q1ucheng/rehab-game.git"
+    "deploy": "gh-pages -d dist -r https://github.com/Q1ucheng/rehab-game.git"
   },
   "dependencies": {
     "@react-three/cannon": "^6.6.0",
