@@ -22,6 +22,9 @@ export class InputController {
   // vJoy specific settings
   private readonly VJOY_DEADZONE = 0.05; // Smaller deadzone for precise control
   private readonly VJOY_SENSITIVITY = 1.2; // Increased sensitivity for rehabilitation
+  
+  // 新增：标准手柄的死区设置，减小到0.02以检测轻微输入
+  private readonly STANDARD_DEADZONE = 0.02; // 从0.1减小到0.02
 
   private currentState: InputState = {
     pitch: 0,
@@ -96,7 +99,7 @@ export class InputController {
    * Get the appropriate deadzone based on device type
    */
   private getDeadzone(): number {
-    return this.vJoyDeviceId ? this.VJOY_DEADZONE : 0.1;
+    return this.vJoyDeviceId ? this.VJOY_DEADZONE : this.STANDARD_DEADZONE;
   }
 
   /**
@@ -175,6 +178,13 @@ export class InputController {
           rawRoll = gp.axes[0] || 0;   // X-axis -> Roll
           rawPitch = gp.axes[1] || 0;  // Y-axis -> Pitch
           rawYaw = gp.axes[2] || 0;    // Z-axis -> Yaw
+          
+          // 新增：适配Python脚本的Z轴映射
+          // 由于Python脚本将0-1023映射到1-32768，需要反向映射回-1到1的范围
+          if (rawYaw !== 0) {
+            // 将vJoy的Z轴值(1-32768)映射回-1到1的范围
+            rawYaw = (rawYaw * 2) - 1; // 标准化到-1到1
+          }
           
           // Alternative: if using rotary encoder or additional axis
           if (gp.axes.length > 3) {
