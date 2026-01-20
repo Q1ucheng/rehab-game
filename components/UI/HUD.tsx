@@ -2,8 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { InputController } from '../../services/inputController';
 
-const HUD: React.FC = () => {
-  const { score, fails, maxFails } = useStore();
+interface HUDProps {
+  onExitClick: () => void;
+}
+
+const HUD: React.FC<HUDProps> = ({ onExitClick }) => {
+  const { score, fails, maxFails, isPlaying, isGameOver } = useStore();
   const lives = Math.max(0, maxFails - fails);
   
   const [deviceInfo, setDeviceInfo] = useState({ type: 'None', id: null, index: null });
@@ -29,10 +33,26 @@ const HUD: React.FC = () => {
 
   return (
     <div className="absolute top-0 left-0 w-full p-6 z-10 pointer-events-none flex justify-between items-start">
-      {/* Score */}
-      <div className="bg-slate-800/80 backdrop-blur-md p-4 rounded-xl border border-slate-700 shadow-xl">
-        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Score</p>
-        <p className="text-4xl font-mono font-bold text-emerald-400">{score}</p>
+      {/* Score and Exit Button */}
+      <div className="flex items-start gap-4">
+        <div className="bg-slate-800/80 backdrop-blur-md p-4 rounded-xl border border-slate-700 shadow-xl">
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Score</p>
+          <p className="text-4xl font-mono font-bold text-emerald-400">{score}</p>
+        </div>
+        
+        {/* Exit Button - 只在游戏进行中显示 */}
+        {isPlaying && !isGameOver && (
+          <button 
+            onClick={onExitClick}
+            className="pointer-events-auto px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl border border-red-700 flex items-center gap-2"
+            title="退出游戏"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Exit
+          </button>
+        )}
       </div>
 
       {/* Controller Status Indicator */}

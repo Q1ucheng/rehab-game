@@ -119,6 +119,7 @@ const GameScene: React.FC = () => {
   const { isPlaying, startGame, incrementScore, isGameOver, resetGame, setCurrentScreen, endGame } = useStore();
   const [rewardPos, setRewardPos] = useState<[number, number, number]>([2, 0.5, 2]);
   const [platformRotation, setPlatformRotation] = useState<Euler>(new Euler());
+  const [showExitConfirm, setShowExitConfirm] = useState(false); // 新增：控制确认弹窗显示
   const platformRef = useRef<PlatformRef>(null);
 
   // 添加平台旋转状态变化的调试
@@ -137,6 +138,26 @@ const GameScene: React.FC = () => {
       endGame();
     }
   }, [startGame, endGame]);
+
+  // 退出游戏函数
+  const handleExitGame = () => {
+    console.log('用户请求退出游戏，显示确认弹窗');
+    setShowExitConfirm(true);
+  };
+
+  // 确认退出
+  const confirmExit = () => {
+    console.log('用户确认退出游戏');
+    endGame();
+    setCurrentScreen(AppScreen.DASHBOARD);
+    setShowExitConfirm(false);
+  };
+
+  // 取消退出
+  const cancelExit = () => {
+    console.log('用户取消退出游戏');
+    setShowExitConfirm(false);
+  };
 
   // 增强的随机刷新功能
   const handleCollect = () => {
@@ -165,7 +186,38 @@ const GameScene: React.FC = () => {
 
   return (
     <div className="w-full h-full relative">
-      <HUD />
+      <HUD onExitClick={handleExitGame} />
+      
+      {/* 退出确认弹窗 */}
+      {showExitConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center max-w-md w-full">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">确认退出游戏？</h2>
+            <p className="text-slate-300 mb-6">当前游戏进度将会丢失，确定要退出吗？</p>
+            <div className="flex gap-4 justify-center">
+              <button 
+                onClick={cancelExit}
+                className="px-6 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-semibold transition flex-1"
+              >
+                取消
+              </button>
+              <button 
+                onClick={confirmExit}
+                className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-semibold transition flex-1"
+              >
+                确认退出
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {isGameOver && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
